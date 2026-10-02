@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>rice race!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@600;900&display=swap');
+        
+        body { 
+            background: #080811; 
+            color: #ffffff; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            font-family: 'Press Start 2P', monospace; 
+            overflow: auto; 
+            user-select: none; 
+            -webkit-user-select: none; 
+        }
+
+        .title-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #canvas { 
+            background: #0f1026; 
+            border: 4px solid #3b82f6; 
+            box-shadow: 0 0 35px rgba(59, 130, 246, 0.4); 
+            border-radius: 12px; 
+            image-rendering: pixelated; 
+            max-width: 100%; 
+            height: auto; 
+            touch-action: none; 
+        }
+
+        .hud { font-family: 'Press Start 2P', monospace; }
+
+        .ctrl-btn { 
+            background: rgba(30, 41, 59, 0.95); 
+            border: 2px solid #3b82f6; 
+            color: #38bdf8; 
+            font-weight: bold; 
+            border-radius: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            touch-action: manipulation; 
+            user-select: none; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .ctrl-btn:active, .ctrl-btn.active-touch { 
+            background: #2563eb; 
+            color: #ffffff;
+            border-color: #60a5fa; 
+            transform: scale(0.94); 
+        }
+
+        .item-slot {
+            width: 32px;
+            height: 32px;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            background: rgba(15, 23, 42, 0.9);
+            color: #94a3b8;
+            transition: all 0.2s ease;
+        }
+
+        .item-slot.active {
+            border-color: #38bdf8;
+            color: #38bdf8;
+            background: rgba(14, 165, 233, 0.25);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .cyber-overlay {
+            background: rgba(10, 10, 20, 0.92);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(56, 189, 248, 0.4);
+            box-shadow: 0 0 30px rgba(14, 165, 233, 0.25);
+        }
+    </style>
+</head>
+<body class="p-2 md:p-4">
+
+    <div id="tap-ui" class="absolute z-30 cyber-overlay p-8 rounded-2xl max-w-lg text-center cursor-pointer mx-4 border-cyan-500">
+        <h1 class="title-font text-4xl md:text-5xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 tracking-wider">RICE RACE!</h1>
+        <p class="text-[11px] text-cyan-300 tracking-widest mb-6">sf2026plusproultra AUDIO ENGINE</p>
+        <p class="text-xs md:text-sm text-gray-300 leading-relaxed mb-8">
+            화면을 터치하여 최고급 사운드 엔진을 활성화하고<br>10마리의 쌀 경주에 참가하세요!
+        </p>
+        <div id="tap-btn" class="px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-base md:text-lg font-bold rounded-xl border-b-4 border-cyan-800 animate-pulse inline-block shadow-lg">
+            TAP TO START ENGINE
+        </div>
+        <p class="mt-8 text-[9px] text-gray-500 font-mono">Copyright 2026 super rice jamjam studio.</p>
+    </div>
+
+    <div id="title-ui" class="absolute z-20 cyber-overlay p-6 md:p-8 rounded-2xl max-w-lg text-center hidden mx-4 border-blue-500">
+        <h1 id="title-header" class="title-font text-3xl md:text-4xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-wide">RICE RACE!</h1>
+        
+        <div id="title-desc" class="text-xs text-gray-200 leading-relaxed mb-6 space-y-3">
+            <p class="text-cyan-300 font-bold text-sm">"이젠 쌀이 레이스도 한다고?"</p>
+            <p class="text-gray-300 text-[11px] leading-normal">
+                srjs의 최고급 사운드 엔진인 sf2026plusproultra의 독특한 사운드와 속도감 넘치는 레이스!
+            </p>
+            <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700 text-[10px] text-left space-y-1">
+                <p class="text-yellow-400 font-bold">[조작 안내]</p>
+                <p>• 이동/가속: 방향키 / WASD / 화면 버튼</p>
+                <p>• 아이템 사용: Space Bar / USE ITEM</p>
+                <p class="text-cyan-400 mt-1">★ 아이템 슬롯 저장 최대 10개! ★</p>
+            </div>
+            <p class="text-[9px] text-gray-400 italic">※ 15초간 입력이 없으면 데모 레이스가 재생됩니다.</p>
+        </div>
+
+        <button id="start-btn" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-base md:text-lg font-bold rounded-xl border-b-4 border-indigo-900 active:translate-y-1 active:border-b-0 transition-all cursor-pointer shadow-lg w-full">
+            START RACE!
+        </button>
+        <p class="mt-6 text-[9px] text-gray-500 font-mono">Copyright 2026 super rice jamjam studio.</p>
+    </div>
+
+    <div class="w-full max-w-[600px] flex justify-between items-center mb-2 hud px-2 text-[10px] md:text-xs">
+        <div class="flex flex-col gap-1">
+            <span class="text-yellow-400">RANK: <span id="rank-val" class="text-white text-sm font-bold">1st</span> / 10</span>
+            <span class="text-cyan-400">SPEED: <span id="speed-val">0</span> km/h</span>
+        </div>
+        <div class="flex flex-col gap-1 text-right">
+            <span class="text-emerald-400">DIST: <span id="dist-val">2000</span>m</span>
+            <span id="booster-val" class="text-slate-400 font-bold">STATE: READY</span>
+        </div>
+    </div>
+
+    <canvas id="canvas" width="600" height="720"></canvas>
+
+    <div class="w-full max-w-[600px] mt-2 flex items-center justify-between px-3 bg-slate-900/90 border-2 border-slate-700 p-2 rounded-xl">
+        <span class="text-[9px] text-cyan-400 font-bold tracking-wider">ITEMS (MAX 10):</span>
+        <div id="item-slots-container" class="flex gap-1 overflow-x-auto py-1">
+            <div class="item-slot active" id="slot-0">-</div>
+            <div class="item-slot" id="slot-1">-</div>
+            <div class="item-slot" id="slot-2">-</div>
+            <div class="item-slot" id="slot-3">-</div>
+            <div class="item-slot" id="slot-4">-</div>
+            <div class="item-slot" id="slot-5">-</div>
+            <div class="item-slot" id="slot-6">-</div>
+            <div class="item-slot" id="slot-7">-</div>
+            <div class="item-slot" id="slot-8">-</div>
+            <div class="item-slot" id="slot-9">-</div>
+        </div>
+    </div>
+
+    <div class="w-full max-w-[600px] mt-3 flex justify-between items-center px-2">
+        <div class="grid grid-cols-3 gap-2 w-40 h-40">
+            <div></div>
+            <button id="btn-up" class="ctrl-btn text-xl">▲</button>
+            <div></div>
+            <button id="btn-left" class="ctrl-btn text-xl">◀</button>
+            <div></div>
+            <button id="btn-right" class="ctrl-btn text-xl">▶</button>
+            <div></div>
+            <button id="btn-down" class="ctrl-btn text-xl">▼</button>
+            <div></div>
+        </div>
+        <div class="flex gap-2">
+            <button id="btn-item" class="ctrl-btn w-32 h-24 bg-gradient-to-b from-blue-600 to-indigo-700 text-xs md:text-sm border-cyan-400 text-white font-bold tracking-wide">
+                USE ITEM<br><span class="text-[9px] text-cyan-200">(SPACE)</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let audioCtx;
+        
+        const BUFFERS = {
+            pulse6: { url: 'pulse_6.25.wav', baseHz: 10.0, buffer: null },
+            pulse12: { url: 'pulse_12.5.wav', baseHz: 11.5, buffer: null },
+            pulse25: { url: 'pulse_25.wav', baseHz: 11.5, buffer: null },
+            pulse50: { url: 'pulse_50.wav', baseHz: 80.0, buffer: null },
+            bassTone: { url: 'bass_tone.wav', baseHz: 12.5, buffer: null },
+            whiteNoise: { url: 'whitenoise.wav', baseHz: 1.0, buffer: null },
+            shortNoise: { url: 'short_noise.wav', baseHz: 3.0, buffer: null },
+            bell: { url: 'bell.wav', baseHz: 670.0, buffer: null },
+            manePulse: { url: 'mane_pulse.wav', baseHz: 26.0, buffer: null },
+            gameOver: { url: 'game_over.mp3', baseHz: null, buffer: null },
+            hello: { url: '안녕하세요.mp3', baseHz: null, buffer: null },
+            sixSeven: { url: 'six seven.mp3', baseHz: null, buffer: null }
+        };
+
+        let gameState = "TAP_WAIT";
+        let idleTimer = 0;
+        let countdownTimer = 0;
+        let countdownVal = 3;
+
+        let engineGainNode = null;
+        let engineSourceNode = null;
+
+        const noteFreqs = { 
+            "C2": 65.41, "D2": 73.42, "E2": 82.41, "F2": 87.31, "G2": 98.0, "A2": 110.0, "B2": 123.47,
+            "C3": 130.81, "D3": 146.83, "E3": 164.81, "F3": 174.61, "G3": 196.0, "A3": 220.0, "B3": 246.94,
+            "C4": 261.63, "D4": 293.66, "E4": 329.63, "F4": 349.23, "G4": 392.0, "A4": 440.0, "B4": 493.88,
+            "C5": 523.25, "D5": 587.33, "E5": 659.25, "F5": 698.46, "G5": 783.99, "A5": 880.0, "B5": 987.77
+        };
+
+        const titleMelodySeq = [
+            "A4", null, "C5", "E5", "A4", null, "G4", "E4", 
+            "F4", "A4", "C5", null, "D5", "C5", "B4", "G4"
+        ];
+        const titleBassSeq = ["A2", "A2", "F2", "F2", "D2", "D2", "E2", "E2"];
+        let titleStep = 0;
+        let titleBgmInterval = null;
+
+        const raceMelodySeq = [
+            "A5", "E5", "A5", "C5", "D5", "E5", "D5", "C5",
+            "A5", "E5", "A5", "E5", "G5", "F5", "E5", "D5",
+            "C5", "G4", "C5", "E5", "F5", "E5", "D5", "C5",
+            "D5", "A4", "D5", "F5", "E5", "D5", "C5", "B4"
+        ];
+        const raceBassSeq = [
+            "A2", "A2", "A2", "A2", "F2", "F2", "F2", "F2",
+            "C3", "C3", "C3", "C3", "G2", "G2", "G2", "G2"
+        ];
+        const raceBellSeq = [
+            "A5", null, null, "C5", null, "E5", null, null,
+            "G5", null, null, "E5", null, "A5", null, "C5"
+        ];
+        let raceStep = 0;
+        let raceBgmInterval = null;
+
+        async function loadAudioBuffers() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+
+                const loadSingle = async (key) => {
+                    try {
+                        const resp = await fetch(BUFFERS[key].url);
+                        const arr = await resp.arrayBuffer();
+                        BUFFERS[key].buffer = await audioCtx.decodeAudioData(arr);
+                    } catch(e) {}
+                };
+
+                await Promise.all(Object.keys(BUFFERS).map(k => loadSingle(k)));
+            } catch (e) {}
+        }
+
+        function playSample(bufObj, targetHz, duration = 0.3, volume = 0.5) {
+            if (!bufObj || !bufObj.buffer || !audioCtx) return;
+            try {
+                const src = audioCtx.createBufferSource();
+                src.buffer = bufObj.buffer;
+
+                let playbackRate = 1.0;
+                if (bufObj.baseHz && targetHz) {
+                    playbackRate = Math.max(0.05, targetHz / bufObj.baseHz);
+                }
+                src.playbackRate.value = playbackRate;
+
+                const actualDur = Math.min((bufObj.buffer.duration / playbackRate), duration);
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + actualDur);
+
+                src.connect(gain);
+                gain.connect(audioCtx.destination);
+                src.start(audioCtx.currentTime);
+                src.stop(audioCtx.currentTime + actualDur);
+            } catch(e) {}
+        }
+
+        function playExternalBuffer(bufObj) {
+            if (!bufObj || !bufObj.buffer || !audioCtx) return;
+            try {
+                const src = audioCtx.createBufferSource();
+                src.buffer = bufObj.buffer;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+                src.connect(gain);
+                gain.connect(audioCtx.destination);
+                src.start(audioCtx.currentTime);
+            } catch(e) {}
+        }
+
+        function playSixSevenSound() {
+            playSample(BUFFERS.pulse50, 450.0, 0.6, 0.8);
+            playSample(BUFFERS.manePulse, 520.0, 0.5, 0.5);
+            playExternalBuffer(BUFFERS.sixSeven);
+        }
+
+        function playHitSound() {
+            playSample(BUFFERS.pulse6, 60.0, 0.12, 0.7);
+            playSample(BUFFERS.whiteNoise, 25.0, 0.1, 0.3);
+        }
+
+        function playGameOverSound() {
+            stopEngineSound();
+            playSample(BUFFERS.whiteNoise, 5.0, 1.2, 1.0);
+            playSample(BUFFERS.bassTone, 20.0, 1.2, 0.9);
+            playExternalBuffer(BUFFERS.gameOver);
+        }
+
+        function startEngineSound() {
+            if (!BUFFERS.manePulse.buffer || !audioCtx || engineSourceNode) return;
+            try {
+                engineSourceNode = audioCtx.createBufferSource();
+                engineSourceNode.buffer = BUFFERS.manePulse.buffer;
+                engineSourceNode.loop = true;
+
+                engineGainNode = audioCtx.createGain();
+                engineGainNode.gain.setValueAtTime(0.22, audioCtx.currentTime);
+
+                engineSourceNode.connect(engineGainNode);
+                engineGainNode.connect(audioCtx.destination);
+                engineSourceNode.start(0);
+            } catch(e) {}
+        }
+
+        function updateEngineSound(speed) {
+            if (!engineSourceNode || !audioCtx) return;
+            try {
+                let rate = 0.85 + (speed / 18) * 1.85;
+                engineSourceNode.playbackRate.setValueAtTime(rate, audioCtx.currentTime);
+            } catch(e) {}
+        }
+
+        function stopEngineSound() {
+            if (engineSourceNode) {
+                try {
+                    engineSourceNode.stop();
+                    engineSourceNode.disconnect();
+                } catch(e) {}
+                engineSourceNode = null;
+            }
+        }
+
+        function startMusicEngine() {
+            if (titleBgmInterval) clearInterval(titleBgmInterval);
+            if (raceBgmInterval) clearInterval(raceBgmInterval);
+
+            const titleIntervalMs = (60 / 140) * 1000 * 0.5;
+            titleBgmInterval = setInterval(() => {
+                if (gameState === "TITLE_SCREEN" || gameState === "DEMO") {
+                    const bassNote = titleBassSeq[Math.floor(titleStep / 2) % titleBassSeq.length];
+                    playSample(BUFFERS.bassTone, noteFreqs[bassNote] || 110.0, 0.3, 0.6);
+
+                    const melNote = titleMelodySeq[titleStep % titleMelodySeq.length];
+                    if (melNote) {
+                        playSample(BUFFERS.pulse25, noteFreqs[melNote] || 523.25, 0.18, 0.35);
+                    }
+
+                    if (titleStep % 8 === 0) {
+                        playSample(BUFFERS.bell, noteFreqs["A5"], 0.25, 0.25);
+                    }
+
+                    titleStep++;
+                }
+            }, titleIntervalMs);
+
+            const raceIntervalMs = (60 / 160) * 1000 * 0.25;
+            raceBgmInterval = setInterval(() => {
+                if (gameState === "PLAYING") {
+                    const step = raceStep % 32;
+
+                    const bassNote = raceBassSeq[Math.floor(step / 2) % raceBassSeq.length];
+                    playSample(BUFFERS.bassTone, noteFreqs[bassNote] || 110.0, 0.15, 0.65);
+
+                    const melNote = raceMelodySeq[step % raceMelodySeq.length];
+                    if (melNote) {
+                        playSample(BUFFERS.pulse12, noteFreqs[melNote] || 659.25, 0.12, 0.4);
+                        playSample(BUFFERS.pulse50, noteFreqs[melNote] || 659.25, 0.1, 0.25);
+                    }
+
+                    const bellNote = raceBellSeq[step % raceBellSeq.length];
+                    if (bellNote) {
+                        playSample(BUFFERS.bell, noteFreqs[bellNote] || 783.99, 0.2, 0.3);
+                    }
+
+                    if (step % 4 === 0) {
+                        playSample(BUFFERS.pulse50, 98.0, 0.08, 0.35);
+                    }
+                    if (step % 8 === 4) {
+                        playSample(BUFFERS.shortNoise, 350.0, 0.06, 0.4);
+                    }
+                    if (step % 2 === 1) {
+                        playSample(BUFFERS.whiteNoise, 25.0, 0.04, 0.15);
+                    }
+
+                    raceStep++;
+                }
+            }, raceIntervalMs);
+        }
+
+        const TOTAL_RACERS = 10;
+        const TOTAL_DISTANCE = 2000;
+        const ROAD_LEFT = 100;
+        const ROAD_RIGHT = 500;
+        const ROAD_WIDTH = ROAD_RIGHT - ROAD_LEFT;
+
+        const AI_COLORS = [
+            "#f87171", "#fb923c", "#facc15", "#4ade80", 
+            "#38bdf8", "#818cf8", "#c084fc", "#f472b6", "#a3e635"
+        ];
+
+        let riceRacers = [];
+        let itemBoxes = [];
+        let activeMosquitoes = [];
+        let playerInventory = [];
+        let keys = {};
+        let trackOffset = 0;
+
+        function initializeGame() {
+            trackOffset = 0;
+            itemBoxes = [];
+            activeMosquitoes = [];
+            playerInventory = [];
+            updateInventoryUI();
+            
+            riceRacers = [];
+            riceRacers.push({
+                id: 0,
+                isPlayer: true,
+                name: "YOU",
+                x: 282,
+                y: 580,
+                w: 36,
+                h: 48,
+                distance: 0,
+                speed: 0,
+                baseSpeed: 5.8,
+                boosterTimer: 0,
+                cookieShieldTimer: 0,
+                bittenTimer: 0,
+                color: "#38bdf8",
+                finished: false,
+                rank: 1
+            });
+
+            for (let i = 1; i < TOTAL_RACERS; i++) {
+                riceRacers.push({
+                    id: i,
+                    isPlayer: false,
+                    name: "CPU " + i,
+                    x: ROAD_LEFT + 25 + (i - 1) * 42,
+                    y: 580 - (i * 20),
+                    w: 36,
+                    h: 48,
+                    distance: 0,
+                    speed: 0,
+                    baseSpeed: 5.0 + Math.random() * 1.1,
+                    boosterTimer: 0,
+                    cookieShieldTimer: 0,
+                    bittenTimer: 0,
+                    color: AI_COLORS[i - 1],
+                    finished: false,
+                    rank: i + 1,
+                    targetX: ROAD_LEFT + 25 + (i - 1) * 42,
+                    aiWanderTimer: 0
+                });
+            }
+
+            for (let d = 160; d < TOTAL_DISTANCE - 100; d += 200) {
+                for (let lane = 0; lane < 3; lane++) {
+                    itemBoxes.push({
+                        x: ROAD_LEFT + 40 + lane * 130,
+                        dist: d,
+                        w: 38,
+                        h: 38,
+                        active: true
+                    });
+                }
+            }
+        }
+
+        function updateInventoryUI() {
+            for (let i = 0; i < 10; i++) {
+                const slot = document.getElementById(`slot-${i}`);
+                if (!slot) continue;
+                if (i < playerInventory.length) {
+                    const type = playerInventory[i];
+                    if (type === 'sixseven') slot.innerText = "67";
+                    else if (type === 'cookie') slot.innerText = "쿠";
+                    else if (type === 'mosquito') slot.innerText = "모";
+                } else {
+                    slot.innerText = "-";
+                }
+                if (i === 0) slot.classList.add('active');
+                else slot.classList.remove('active');
+            }
+        }
+
+        function collectRandomItem() {
+            if (playerInventory.length >= 10) return;
+            const rand = Math.random();
+            let itemType = 'sixseven';
+            if (rand < 0.35) itemType = 'sixseven';
+            else if (rand < 0.70) itemType = 'cookie';
+            else itemType = 'mosquito';
+
+            playerInventory.push(itemType);
+            updateInventoryUI();
+            playSample(BUFFERS.bell, 800.0, 0.15, 0.5);
+        }
+
+        function useTopItem() {
+            if (playerInventory.length === 0) return;
+            const item = playerInventory.shift();
+            updateInventoryUI();
+
+            const player = riceRacers[0];
+
+            if (item === 'sixseven') {
+                player.boosterTimer = 4000;
+                playSixSevenSound();
+            } else if (item === 'cookie') {
+                player.cookieShieldTimer = 6000;
+                playSample(BUFFERS.bell, 1000.0, 0.3, 0.8);
+            } else if (item === 'mosquito') {
+                activeMosquitoes.push({
+                    x: player.x + player.w / 2,
+                    dist: player.distance + 10,
+                    active: true
+                });
+                playSample(BUFFERS.shortNoise, 450.0, 0.25, 0.8);
+            }
+        }
+
+        document.getElementById('tap-ui').addEventListener('click', async () => {
+            await loadAudioBuffers();
+            if (navigator.vibrate) {
+                try { navigator.vibrate([100, 50, 100]); } catch(e) {}
+            }
+            playExternalBuffer(BUFFERS.hello);
+            
+            startMusicEngine();
+
+            document.getElementById('tap-ui').style.display = 'none';
+            document.getElementById('title-ui').style.display = 'block';
+            
+            gameState = "TITLE_SCREEN";
+            idleTimer = 0;
+            initializeGame();
+            requestAnimationFrame(gameLoop);
+        });
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('title-ui').style.display = 'none';
+            gameState = "COUNTDOWN";
+            countdownVal = 3;
+            countdownTimer = 0;
+            initializeGame();
+            playSample(BUFFERS.bell, 330.0, 0.4, 0.8);
+        });
+
+        function getOrdinal(n) {
+            const s = ["th", "st", "nd", "rd"];
+            const v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, 600, 720);
+
+            if (gameState === "TITLE_SCREEN") {
+                idleTimer++;
+                if (idleTimer > 900) {
+                    gameState = "DEMO";
+                    document.getElementById('title-ui').style.display = 'none';
+                    initializeGame();
+                }
+
+                drawRoad(0);
+                drawRiceGrain(riceRacers[0]);
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            if (gameState === "COUNTDOWN") {
+                drawRoad(0);
+                drawRiceGrain(riceRacers[0]);
+
+                countdownTimer++;
+                if (countdownTimer % 60 === 0 && countdownVal > 0) {
+                    countdownVal--;
+                    if (countdownVal > 0) {
+                        playSample(BUFFERS.bell, 330.0, 0.4, 0.8);
+                    } else if (countdownVal === 0) {
+                        playSample(BUFFERS.bell, 950.0, 0.6, 1.0);
+                    }
+                }
+
+                if (countdownVal <= 0 && countdownTimer >= 220) {
+                    gameState = "PLAYING";
+                    startEngineSound();
+                }
+
+                ctx.fillStyle = "rgba(10, 10, 20, 0.65)";
+                ctx.fillRect(0, 0, 600, 720);
+
+                ctx.fillStyle = countdownVal === 0 ? "#38bdf8" : "#facc15";
+                ctx.font = "bold 48px 'Orbitron', sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(countdownVal > 0 ? countdownVal : "GO!", 300, 340);
+
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            if (gameState === "DEMO") {
+                let playerRacer = riceRacers[0];
+                playerRacer.x += Math.sin(Date.now() / 300) * 2;
+                playerRacer.distance += 3.8;
+                if (playerRacer.distance >= TOTAL_DISTANCE) playerRacer.distance = 0;
+            }
+
+            if (gameState === "PLAYING" || gameState === "DEMO") {
+                let playerRacer = riceRacers[0];
+
+                if (playerRacer.boosterTimer > 0) playerRacer.boosterTimer -= 16.67;
+                if (playerRacer.cookieShieldTimer > 0) playerRacer.cookieShieldTimer -= 16.67;
+                if (playerRacer.bittenTimer > 0) playerRacer.bittenTimer -= 16.67;
+
+                if (gameState === "PLAYING" && !playerRacer.finished) {
+                    let moveSpeed = 6.5;
+                    if (playerRacer.boosterTimer > 0) moveSpeed = 9.5;
+
+                    if (keys["ArrowLeft"] || keys["a"]) playerRacer.x = Math.max(ROAD_LEFT + 5, playerRacer.x - moveSpeed);
+                    if (keys["ArrowRight"] || keys["d"]) playerRacer.x = Math.min(ROAD_RIGHT - playerRacer.w - 5, playerRacer.x + moveSpeed);
+                    
+                    let accel = 0.085;
+                    let targetSpeed = playerRacer.baseSpeed;
+
+                    if (keys["ArrowUp"] || keys["w"]) targetSpeed += 2.2;
+                    if (keys["ArrowDown"] || keys["s"]) targetSpeed -= 2.0;
+
+                    if (playerRacer.bittenTimer > 0) {
+                        targetSpeed *= 0.35;
+                    }
+
+                    if (playerRacer.boosterTimer > 0) {
+                        targetSpeed = 16.8;
+                    }
+
+                    if (playerRacer.speed < targetSpeed) playerRacer.speed += accel;
+                    else if (playerRacer.speed > targetSpeed) playerRacer.speed -= accel * 2;
+
+                    playerRacer.speed = Math.max(0, playerRacer.speed);
+                    playerRacer.distance += playerRacer.speed;
+
+                    updateEngineSound(playerRacer.speed);
+
+                    if (playerRacer.distance >= TOTAL_DISTANCE) {
+                        playerRacer.distance = TOTAL_DISTANCE;
+                        playerRacer.finished = true;
+                    }
+                }
+
+                trackOffset += playerRacer.speed * 4;
+
+                riceRacers.forEach(racer => {
+                    if (racer.isPlayer) return;
+
+                    if (racer.bittenTimer > 0) racer.bittenTimer -= 16.67;
+
+                    if (!racer.finished) {
+                        racer.aiWanderTimer++;
+                        if (racer.aiWanderTimer > 60) {
+                            racer.aiWanderTimer = 0;
+                            racer.targetX = ROAD_LEFT + 20 + Math.random() * (ROAD_WIDTH - 60);
+                        }
+
+                        if (racer.x < racer.targetX) racer.x += 1.3;
+                        if (racer.x > racer.targetX) racer.x -= 1.3;
+
+                        let currentBase = racer.baseSpeed;
+                        if (racer.bittenTimer > 0) currentBase *= 0.35;
+
+                        racer.speed = currentBase + Math.sin(Date.now() / 500 + racer.id) * 0.5;
+                        racer.distance += racer.speed;
+
+                        if (racer.distance >= TOTAL_DISTANCE) {
+                            racer.distance = TOTAL_DISTANCE;
+                            racer.finished = true;
+                        }
+                    }
+                });
+
+                let sortedRacers = [...riceRacers].sort((a, b) => b.distance - a.distance);
+                sortedRacers.forEach((r, index) => {
+                    r.rank = index + 1;
+                });
+
+                itemBoxes.forEach(box => {
+                    if (!box.active) return;
+                    riceRacers.forEach(racer => {
+                        let racerScreenY = racer.isPlayer ? racer.y : racer.y - (racer.distance - playerRacer.distance) * 4;
+                        let boxScreenY = racer.y - (box.dist - playerRacer.distance) * 4;
+
+                        if (Math.abs(racerScreenY - boxScreenY) < 30 && Math.abs(racer.x - box.x) < 30) {
+                            box.active = false;
+                            if (racer.isPlayer) {
+                                collectRandomItem();
+                            }
+                        }
+                    });
+                });
+
+                activeMosquitoes.forEach(mosq => {
+                    if (!mosq.active) return;
+                    mosq.dist += 14.5;
+
+                    riceRacers.forEach(racer => {
+                        let racerScreenY = racer.isPlayer ? racer.y : racer.y - (racer.distance - playerRacer.distance) * 4;
+                        let mosqScreenY = racer.y - (mosq.dist - playerRacer.distance) * 4;
+
+                        if (Math.abs(racerScreenY - mosqScreenY) < 30 && Math.abs(racer.x - mosq.x) < 30) {
+                            if (racer.cookieShieldTimer <= 0) {
+                                mosq.active = false;
+                                racer.bittenTimer = 3500;
+                                if (racer.isPlayer) playHitSound();
+                            }
+                        }
+                    });
+
+                    if (mosq.dist > playerRacer.distance + 800) mosq.active = false;
+                });
+
+                if (playerRacer.finished || sortedRacers.filter(r => r.finished).length === TOTAL_RACERS) {
+                    if (gameState === "PLAYING") {
+                        gameState = "GAMEOVER";
+                        playGameOverSound();
+                        
+                        document.getElementById('title-ui').style.display = 'block';
+                        document.getElementById('title-header').innerText = "RACE FINISHED!";
+                        document.getElementById('title-desc').innerHTML = `
+                            <span class="text-xl text-cyan-300 font-bold block mb-4">FINAL RANK: ${getOrdinal(playerRacer.rank)}</span>
+                            <span class="text-xs text-gray-300">경기가 모두 종료되었습니다!</span>
+                        `;
+                    }
+                }
+
+                document.getElementById('rank-val').innerText = getOrdinal(playerRacer.rank);
+                document.getElementById('dist-val').innerText = Math.max(0, Math.floor(TOTAL_DISTANCE - playerRacer.distance)) + "m";
+                document.getElementById('speed-val').innerText = Math.floor(playerRacer.speed * 18);
+                
+                const boostEl = document.getElementById('booster-val');
+                if (playerRacer.boosterTimer > 0) {
+                    boostEl.innerText = "67 NITRO BOOST!";
+                    boostEl.className = "text-yellow-400 font-bold animate-pulse";
+                } else if (playerRacer.cookieShieldTimer > 0) {
+                    boostEl.innerText = "DUBAI COOKIE!";
+                    boostEl.className = "text-amber-400 font-bold animate-pulse";
+                } else if (playerRacer.bittenTimer > 0) {
+                    boostEl.innerText = "BITTEN BY MOSQUITO!";
+                    boostEl.className = "text-red-500 font-bold";
+                } else {
+                    boostEl.innerText = "STATE: READY";
+                    boostEl.className = "text-slate-400 font-bold";
+                }
+
+                drawRoad(trackOffset);
+
+                itemBoxes.forEach(box => {
+                    if (!box.active) return;
+                    let boxScreenY = playerRacer.y - (box.dist - playerRacer.distance) * 4;
+                    if (boxScreenY > -50 && boxScreenY < 750) {
+                        ctx.fillStyle = "#38bdf8";
+                        ctx.fillRect(box.x, boxScreenY, box.w, box.h);
+                        ctx.strokeStyle = "#ffffff";
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(box.x, boxScreenY, box.w, box.h);
+
+                        ctx.fillStyle = "#0f172a";
+                        ctx.font = "bold 16px 'Orbitron', sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText("?", box.x + box.w / 2, boxScreenY + box.h / 2);
+                    }
+                });
+
+                activeMosquitoes.forEach(mosq => {
+                    if (!mosq.active) return;
+                    let mosqScreenY = playerRacer.y - (mosq.dist - playerRacer.distance) * 4;
+                    if (mosqScreenY > -50 && mosqScreenY < 750) {
+                        ctx.fillStyle = "#ef4444";
+                        ctx.beginPath();
+                        ctx.arc(mosq.x, mosqScreenY, 12, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "9px 'Press Start 2P', monospace";
+                        ctx.textAlign = "center";
+                        ctx.fillText("모기", mosq.x, mosqScreenY + 3);
+                    }
+                });
+
+                sortedRacers.reverse().forEach(racer => {
+                    let renderY = racer.isPlayer ? racer.y : racer.y - (racer.distance - playerRacer.distance) * 4;
+                    if (renderY > -60 && renderY < 780) {
+                        drawRiceGrain(racer, renderY);
+                    }
+                });
+
+                drawMinimap(sortedRacers);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawRoad(offset) {
+            ctx.fillStyle = "#090d16";
+            ctx.fillRect(0, 0, ROAD_LEFT, 720);
+            ctx.fillRect(ROAD_RIGHT, 0, 600 - ROAD_RIGHT, 720);
+
+            let curbHeight = 40;
+            for (let y = -curbHeight + (offset % (curbHeight * 2)); y < 720; y += curbHeight) {
+                ctx.fillStyle = (Math.floor((y - offset) / curbHeight) % 2 === 0) ? "#3b82f6" : "#ffffff";
+                ctx.fillRect(ROAD_LEFT - 12, y, 12, curbHeight);
+                ctx.fillRect(ROAD_RIGHT, y, 12, curbHeight);
+            }
+
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(ROAD_LEFT, 0, ROAD_WIDTH, 720);
+
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 4;
+            ctx.setLineDash([30, 30]);
+            ctx.lineDashOffset = -offset;
+
+            ctx.beginPath();
+            ctx.moveTo(ROAD_LEFT + ROAD_WIDTH / 3, 0);
+            ctx.lineTo(ROAD_LEFT + ROAD_WIDTH / 3, 720);
+            ctx.moveTo(ROAD_LEFT + (ROAD_WIDTH / 3) * 2, 0);
+            ctx.lineTo(ROAD_LEFT + (ROAD_WIDTH / 3) * 2, 720);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawRiceGrain(racer, overrideY) {
+            let ry = overrideY !== undefined ? overrideY : racer.y;
+            
+            ctx.save();
+            ctx.translate(racer.x + racer.w / 2, ry + racer.h / 2);
+
+            if (racer.cookieShieldTimer > 0) {
+                ctx.strokeStyle = "#f59e0b";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(0, 0, 28, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            if (racer.boosterTimer > 0) {
+                ctx.fillStyle = "#38bdf8";
+                ctx.beginPath();
+                ctx.moveTo(-10, 20);
+                ctx.lineTo(0, 38 + Math.random() * 10);
+                ctx.lineTo(10, 20);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = racer.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 16, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#ffffff";
+            ctx.stroke();
+
+            ctx.fillStyle = racer.bittenTimer > 0 ? "#ef4444" : "#0f172a";
+            ctx.beginPath();
+            ctx.arc(-6, -6, 3, 0, Math.PI * 2);
+            ctx.arc(6, -6, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (racer.isPlayer) {
+                ctx.fillStyle = "#0284c7";
+                ctx.fillRect(-14, -14, 28, 6);
+            }
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "8px 'Press Start 2P', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(racer.isPlayer ? "YOU" : "P" + racer.id, 0, -26);
+
+            ctx.restore();
+        }
+
+        function drawMinimap(racers) {
+            const mapX = 18;
+            const mapY = 70;
+            const mapW = 14;
+            const mapH = 360;
+
+            ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+            ctx.fillRect(mapX, mapY, mapW, mapH);
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(mapX, mapY, mapW, mapH);
+
+            ctx.fillStyle = "#facc15";
+            ctx.fillRect(mapX - 3, mapY, mapW + 6, 4);
+
+            racers.forEach(racer => {
+                let progress = racer.distance / TOTAL_DISTANCE;
+                let dotY = mapY + mapH - (progress * mapH);
+
+                ctx.fillStyle = racer.color;
+                ctx.beginPath();
+                ctx.arc(mapX + mapW / 2, dotY, racer.isPlayer ? 6 : 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        const returnToTitleFromDemo = () => {
+            if (gameState === "DEMO") {
+                gameState = "TITLE_SCREEN";
+                document.getElementById('title-ui').style.display = 'block';
+                idleTimer = 0;
+                return true;
+            }
+            return false;
+        };
+
+        window.addEventListener('keydown', e => { 
+            if (returnToTitleFromDemo()) return;
+            if (e.key === " ") {
+                useTopItem();
+            }
+            keys[e.key] = true; 
+        });
+        window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+        canvas.addEventListener('pointerdown', () => {
+            returnToTitleFromDemo();
+        });
+
+        const setupBtn = (id, key) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            
+            const activate = (e) => {
+                e.preventDefault();
+                if (returnToTitleFromDemo()) return;
+                keys[key] = true;
+                el.classList.add('active-touch');
+            };
+            
+            const deactivate = (e) => {
+                e.preventDefault();
+                keys[key] = false;
+                el.classList.remove('active-touch');
+            };
+
+            el.addEventListener('pointerdown', activate);
+            el.addEventListener('pointerup', deactivate);
+            el.addEventListener('pointercancel', deactivate);
+            el.addEventListener('pointerleave', deactivate);
+
+            el.addEventListener('touchstart', activate, { passive: false });
+            el.addEventListener('touchend', deactivate, { passive: false });
+            el.addEventListener('touchcancel', deactivate, { passive: false });
+        };
+
+        setupBtn('btn-up', 'ArrowUp');
+        setupBtn('btn-down', 'ArrowDown');
+        setupBtn('btn-left', 'ArrowLeft');
+        setupBtn('btn-right', 'ArrowRight');
+
+        document.getElementById('btn-item').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (returnToTitleFromDemo()) return;
+            useTopItem();
+        });
+    </script>
+</body>
+</html>
