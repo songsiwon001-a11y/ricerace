@@ -200,6 +200,7 @@
         let idleTimer = 0;
         let countdownTimer = 0;
         let countdownVal = 3;
+        let playCount = 0;
 
         let engineGainNode = null;
         let engineSourceNode = null;
@@ -426,6 +427,8 @@
             playerInventory = [];
             updateInventoryUI();
             
+            let difficultyMultiplier = 1.0 + (playCount * 0.12);
+
             riceRacers = [];
             riceRacers.push({
                 id: 0,
@@ -443,7 +446,8 @@
                 bittenTimer: 0,
                 color: "#38bdf8",
                 finished: false,
-                rank: 1
+                rank: 1,
+                inventory: []
             });
 
             for (let i = 1; i < TOTAL_RACERS; i++) {
@@ -457,7 +461,7 @@
                     h: 48,
                     distance: 0,
                     speed: 0,
-                    baseSpeed: 5.0 + Math.random() * 1.1,
+                    baseSpeed: (4.7 + (i * 0.06)) * difficultyMultiplier,
                     boosterTimer: 0,
                     cookieShieldTimer: 0,
                     bittenTimer: 0,
@@ -465,7 +469,8 @@
                     finished: false,
                     rank: i + 1,
                     targetX: ROAD_LEFT + 25 + (i - 1) * 42,
-                    aiWanderTimer: 0
+                    aiWanderTimer: 0,
+                    inventory: []
                 });
             }
 
@@ -499,39 +504,53 @@
             }
         }
 
-        function collectRandomItem() {
-            if (playerInventory.length >= 10) return;
+        function getRandomItemType() {
             const rand = Math.random();
-            let itemType = 'sixseven';
-            if (rand < 0.35) itemType = 'sixseven';
-            else if (rand < 0.70) itemType = 'cookie';
-            else itemType = 'mosquito';
+            if (rand < 0.35) return 'sixseven';
+            if (rand < 0.70) return 'cookie';
+            return 'mosquito';
+        }
 
-            playerInventory.push(itemType);
-            updateInventoryUI();
-            playSample(BUFFERS.bell, 800.0, 0.15, 0.5);
+        function collectRandomItem(racer) {
+            if (racer.isPlayer) {
+                if (playerInventory.length >= 10) return;
+                playerInventory.push(getRandomItemType());
+                updateInventoryUI();
+                playSample(BUFFERS.bell, 800.0, 0.15, 0.5);
+            } else {
+                if (racer.inventory.length >= 10) return;
+                racer.inventory.push(getRandomItemType());
+            }
         }
 
         function useTopItem() {
             if (playerInventory.length === 0) return;
             const item = playerInventory.shift();
             updateInventoryUI();
+            executeItemEffect(riceRacers[0], item);
+        }
 
-            const player = riceRacers[0];
+        function useCpuItem(cpuRacer) {
+            if (!cpuRacer || cpuRacer.inventory.length === 0) return;
+            const item = cpuRacer.inventory.shift();
+            executeItemEffect(cpuRacer, item);
+        }
 
+        function executeItemEffect(racer, item) {
             if (item === 'sixseven') {
-                player.boosterTimer = 4000;
-                playSixSevenSound();
+                racer.boosterTimer = 4000;
+                if (racer.isPlayer) playSixSevenSound();
+                else playSample(BUFFERS.pulse50, 400.0, 0.4, 0.5);
             } else if (item === 'cookie') {
-                player.cookieShieldTimer = 6000;
-                playSample(BUFFERS.bell, 1000.0, 0.3, 0.8);
+                racer.cookieShieldTimer = 6000;
+                if (racer.isPlayer) playSample(BUFFERS.bell, 1000.0, 0.3, 0.8);
             } else if (item === 'mosquito') {
                 activeMosquitoes.push({
-                    x: player.x + player.w / 2,
-                    dist: player.distance + 10,
+                    x: racer.x + racer.w / 2,
+                    dist: racer.distance + 10,
                     active: true
                 });
-                playSample(BUFFERS.shortNoise, 450.0, 0.25, 0.8);
+                if (racer.isPlayer) playSample(BUFFERS.shortNoise, 450.0, 0.25, 0.8);
             }
         }
 
@@ -558,6 +577,7 @@
             gameState = "COUNTDOWN";
             countdownVal = 3;
             countdownTimer = 0;
+            playCount++;
             initializeGame();
             playSample(BUFFERS.bell, 330.0, 0.4, 0.8);
         });
@@ -671,6 +691,8 @@
                 riceRacers.forEach(racer => {
                     if (racer.isPlayer) return;
 
+                    if (racer.boosterTimer > 0) racer.boosterTimer -= 16.67;
+                    if (racer.cookieShieldTimer > 0) racer.cookieShieldTimer -= 16.67;
                     if (racer.bittenTimer > 0) racer.bittenTimer -= 16.67;
 
                     if (!racer.finished) {
@@ -685,9 +707,14 @@
 
                         let currentBase = racer.baseSpeed;
                         if (racer.bittenTimer > 0) currentBase *= 0.35;
+                        if (racer.boosterTimer > 0) currentBase = 15.0;
 
                         racer.speed = currentBase + Math.sin(Date.now() / 500 + racer.id) * 0.5;
                         racer.distance += racer.speed;
+
+                        if (racer.inventory.length > 0 && Math.random() < 0.015) {
+                            useCpuItem(racer);
+                        }
 
                         if (racer.distance >= TOTAL_DISTANCE) {
                             racer.distance = TOTAL_DISTANCE;
@@ -696,7 +723,12 @@
                     }
                 });
 
-                let sortedRacers = [...riceRacers].sort((a, b) => b.distance - a.distance);
+                let sortedRacers = [...riceRacers].sort((a, b) => {
+                    if (b.distance !== a.distance) {
+                        return b.distance - a.distance;
+                    }
+                    return a.id - b.id;
+                });
                 sortedRacers.forEach((r, index) => {
                     r.rank = index + 1;
                 });
@@ -709,9 +741,7 @@
 
                         if (Math.abs(racerScreenY - boxScreenY) < 30 && Math.abs(racer.x - box.x) < 30) {
                             box.active = false;
-                            if (racer.isPlayer) {
-                                collectRandomItem();
-                            }
+                            collectRandomItem(racer);
                         }
                     });
                 });
